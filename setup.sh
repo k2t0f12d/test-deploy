@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # NOTE: uncomment this to get debugging output from BASH
-set -x
+#set -x
 
 compare_versions() {
 
