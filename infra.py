@@ -14,6 +14,7 @@ from troposphere.policies import (
 import troposphere.elasticloadbalancing as elb
 from botocore.exceptions import ClientError
 from aws import AWS
+from ami import AMI
 
 
 class InfrastructureTemplate():
@@ -22,8 +23,10 @@ class InfrastructureTemplate():
     def __init__(self):
         u""" Infrastructure Class Contructor """
         self.aws = AWS()
+        self.ami = AMI()
         self.ref_stack_id = Ref('AWS::StackId')
         self.keypair_name = 'test-deploy-keypair'
+        self.ami_id = self.ami.minimal_linux_ami()
         self.deployment_bucket_prefix = 'test-deploy-bucket-'
         self.deployment_bucket_name = '{}{}'.format(self.deployment_bucket_prefix,
                                                     uuid.uuid4().hex[:12].lower())
@@ -37,8 +40,6 @@ class InfrastructureTemplate():
         if self.deploy_bucket_doesnt_exist():
             self.deployment_bucket_location = self.create_deploy_bucket(self.deployment_bucket_name)
         else:
-            self.deployment_bucket_name = '{}{}'.format(self.deployment_bucket_prefix,
-                                                        uuid.uuid4().hex[:12].lower())
             self.deployment_bucket_location = self.get_bucket_url(self.deployment_bucket_name)
 
         self.template = Template()
@@ -50,6 +51,12 @@ class InfrastructureTemplate():
             Parameter('KeyName',
                       Description='Name of an existing EC2 KeyPair',
                       Default=self.keypair_name,
+                      Type='String'))
+
+        self.template.add_parameter(
+            Parameter('AmdId',
+                      Description='Lastest Minimal Linuix AMI',
+                      Default=self.ami_id,
                       Type='String'))
 
         self.template.add_parameter(
@@ -225,7 +232,7 @@ class InfrastructureTemplate():
                                     "    --stack ", Ref("AWS::StackName"),
                                     "    --region ", Ref("AWS::Region"), "\n"
                                 ])),
-                                ImageId='AmiId',
+                                ImageId=Ref('AmiId'),
                                 KeyName=Ref('KeyName'),
                                 BlockDeviceMappings=[
                                     ec2.BlockDeviceMapping(
@@ -292,6 +299,11 @@ class InfrastructureTemplate():
                     )
                 )
             ))
+
+    @staticmethod
+    def get_bucket_url(bucket_name):
+        u""" Generates the bucket location """
+        return 'https://{}.s3.amazonaws.com/'.format(bucket_name)
 
     def keypair_doesnt_exist(self):
         u""" Check to see if EC2 keypair exists """
@@ -378,11 +390,6 @@ class InfrastructureTemplate():
         except ClientError as ex:
             print(ex)
             sys.exit()
-
-    @staticmethod
-    def get_bucket_url(bucket_name):
-        u""" Generates the bucket location """
-        return 'https://{}.s3.amazonaws.com/'.format(bucket_name)
 
     def print_template(self, output='yaml'):
         u""" Dump Cloudformation Template """
