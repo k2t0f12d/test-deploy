@@ -1,0 +1,14 @@
+ngx1 ansible_ssh_host=localhost
+srv1 ansible_ssh_host=localhost
+
+[nginx]
+ngx1
+[nginx:vars]
+ansible_ssh_user=test
+ansible_ssh_private_key_file: test-deploy.pem
+
+[server]
+srv1
+[server:vars]
+ansible_ssh_user=test
+ansible_ssh_private_key_file: test-deploy.pem

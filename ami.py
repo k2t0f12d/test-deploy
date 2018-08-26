@@ -16,7 +16,7 @@ class AMI():
         u""" Get Minimal AWS Linux AMI ID """
         client = self.aws.get_client('ec2')
         try:
-            res = client.describe_images(Owners=['self', 'amazon'],
+            res = client.describe_images(Owners=['self', '099720109477'],
                                          Filters=[
                                              {
                                                  'Name': 'virtualization-type',
@@ -32,7 +32,7 @@ class AMI():
                                              },
                                              {
                                                  'Name': 'description',
-                                                 'Values': ['Amazon Linux AMI 2018*Minimal*']
+                                                 'Values': ['Canonical, Ubuntu, 16.04 LTS, amd64 xenial image*']
                                              }])
         except ClientError as ex:
             print(ex)
@@ -51,5 +51,4 @@ class AMI():
                 create_time = parse(image['CreationDate'])
                 timestep = current_time - create_time
                 ami_id = image['ImageId']
-            print('{}\n{}\n'.format(image['Description'], timestep))
         return ami_id

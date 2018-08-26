@@ -1,0 +1,71 @@
+---
+- name: Nginx Reverse Proxy
+  hosts: nginx
+  sudo: yes
+  vars:
+    nginx_user: nginx
+    nginx_group: nginx
+    nginx_confdir: /etc/nginx
+    server_name: test-deploy
+    domain_name: example.com
+    ssl_cert_chainpath: /etc/letsencrypt/live
+    ssl_cert_keypath: /etc/letsencrypt/keys
+    sysmin_email: <put an email here>
+
+  tasks:
+    - name: Nginx Group
+      group: name={{ nginx_user }} state=present system=yes
+
+    - name: Nginx User
+      user: name={{ nginx_group }} group=nginx shell=/usr/sbin/nologin state=present system=yes
+
+    - name: Update package cache
+      apt: update_cache=yes
+
+    - name: Install Nginx
+      apt: name=nginx state=present
+
+    - name: Install Anisble dependencies
+      apt: name=python-pycurl state=present
+
+    - name: Add Lets Encrypt certbot ppa repository
+      apt_repository: repo='ppa:certbot/certbot' state=present update_cache=yes
+
+    - name: Install Lets Encrypt certbot
+      apt: name=python-certbot-nginx state=present
+
+    - name: Get the SSL Certificate
+      shell: certbot certonly -n --standalone --expand --agree-tos --email {{ sysmin_email }} --domains {{ domain_name }}
+
+    - name: Deploy Nginx configuration
+      template: src=templates/nginx.j2
+                dest={{ nginx_confdir }}/nginx.conf
+                owner=root
+                group=root
+                mode=0644
+      notify:
+        - Restart Nginx
+
+    - name: Deploy Reverse Proxy Configuraton
+      template: src=templates/gitea.j2 dest={{ nginx_confdir }}/conf.d/gitea.conf
+      notify:
+        - Restart Nginx
+
+    - name: Deploy DH pem
+      template: src=templates/dh4096.j2
+                dest={{ nginx_confdir }}/dh4096.pem
+                owner=root
+                group=root
+                mode=0644
+      notify:
+        - Restart Nginx
+
+    - name: Start Reverse Proxy
+      service: name=nginx enabled=yes state=started
+
+  handlers:
+    - name: Restart Nginx
+      service: name=nginx state=restarted
+
+- name: Test Deploy Service
+  hosts:
